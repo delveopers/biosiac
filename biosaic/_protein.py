@@ -2,11 +2,16 @@ from itertools import product
 import json, pickle
 import os, tempfile, urllib, requests
 
-class DNA:
+AMINO_ACIDS = [
+  'A','R','N','D','C','Q','E','G','H','I',
+  'L','K','M','F','P','S','T','W','Y','V','-'  # 21st for gap/pad
+]
+
+class Protein:
   def __init__(self, kmer: int, continuous: bool=True):
     self.kmer = kmer
     self.continuous = continuous
-    self._base_chars = ['A', 'T', 'G', 'C', '-']   # upper-case dna letters
+    self._base_chars = AMINO_ACIDS   # upper-case Protein letters
     self._ids_to_taken, self.vocab = {}, {}
 
     # Calculate vocab size:
@@ -19,7 +24,7 @@ class DNA:
 
   def tokenize(self, sequence):
     if any(ch not in self._base_chars for ch in sequence):
-      raise ValueError("Invalid character in DNA sequence")
+      raise ValueError("Invalid character in Protein sequence")
 
     if self.continuous:
       return [sequence[i : i+self.kmer] for i in range(len(sequence) - self.kmer + 1)]
