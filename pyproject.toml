@@ -1,0 +1,44 @@
+[build-system]
+requires = [
+  "setuptools>=61.0",
+  "wheel"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "biosaic"
+version = "0.1.1"
+description = "BioSAIC: a lightweight DNA and protein k-mer tokenizer with pre-trained vocab support."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "Apache-2.0"
+authors = [
+  { name = "Shivendra Singh", email = "shivharsh44@gmail.com" },
+]
+keywords = ["bioinformatics", "tokenizer", "dna", "protein", "kmer", "machine-learning"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Intended Audience :: Science/Research",
+  "Development Status :: 4 - Beta",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+
+dependencies = [
+  "requests>=2.25.1",    # for remote model fetch
+]
+
+[project.urls]
+Homepage = "https://github.com/delveopers/biosaic"
+Source = "https://github.com/delveopers/biosaic"
+Documentation = "https://github.com/delveopers/biosaic/docs"
+
+[tool.setuptools]
+# no package-dir needed since biosaic/ sits at project root
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["biosaic*"]
