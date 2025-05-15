@@ -45,10 +45,10 @@ class Tokenizer:
     else:
       self._tokenizer = Protein(kmer=kmer, continuous=continuous)
     if continuous:
-      self.encoding = f"cont_{kmer}k"
+      self.encoding = f"{mode}/cont_{kmer}k"
     else:
-      self.encoding = f"base_{kmer}k"
-    self.encoding_path = dev_base_url + self.encoding + ".model"
+      self.encoding = f"{mode}/base_{kmer}k"
+    self.encoding_path = main_base_url + self.encoding + ".model"
     self._tokenizer.load(model_path=self.encoding_path)
 
   def encode(self, sequence: str) -> list[int]:

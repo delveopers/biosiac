@@ -63,6 +63,10 @@ print(decoded[:300])
 print(decoded == sequence)
 ```
 
+For more information refer to the docs:
+- [Usage.md](https://github.com/delveopers/biosaic/blob/dev/docs/Usage.md)
+- [Technical.md](https://github.com/delveopers/biosaic/blob/dev/docs/Technical.md)
+
 #### ***Output***
 
 ```cmd
