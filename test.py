@@ -1,10 +1,10 @@
-from biosaic._dna import DNA
+from biosaic._protein import Protein
 string = "ATGCCCCAACTAAATACCGCCGTATGACCCACCATAATTACCCCCATACTCCTGACACTATTTCTCGTCACCCAACTAAAAATATTAAATTCAAATTACCATCTACCCCCCTCACCAAAACCCATAAAAATAAAAAACTACAATAAACCCTGAGAACCAAAATGAACGAAAATCTATTCGCTTCATTCGCTGCCCCCACAATCCTAG"
 
-token = DNA(kmer=5, continuous=False)
+token = Protein(kmer=5, continuous=False)
 token.build_vocab()
-token.save("vocab.as_json/base_5k", as_json=True)
+token.save("vocab/protein/base_5k")
 
-cont_token = DNA(kmer=5, continuous=True)
+cont_token = Protein(kmer=5, continuous=True)
 cont_token.build_vocab()
-cont_token.save("vocab.as_json/cont_5k", as_json=True)
+cont_token.save("vocab/protein/cont_5k")
