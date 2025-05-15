@@ -2,8 +2,8 @@ from ._dna import DNA
 from ._protein import Protein
 from typing import List
 
-main_base_url = "https://github.com/delveopers/biosaic/blob/main/model/"  # fetches from main branch
-dev_base_url = "https://raw.githubusercontent.com/delveopers/biosaic/dev/model/"  # fetches from dev branch
+main_base_url = "https://github.com/delveopers/biosaic/blob/main/vocab/"  # fetches from main branch
+dev_base_url = "https://raw.githubusercontent.com/delveopers/biosaic/dev/vocab/"  # fetches from dev branch
 hugginface_url = "https://huggingface.co/shivendrra/BiosaicTokenizer/resolve/main/kmers/"  # fetches from huggingface librrary
 
 class Tokenizer:
@@ -35,7 +35,10 @@ class Tokenizer:
         AssertionError: If an invalid mode is specified or k-mer size is above supported limit.
     """
     assert (mode == "dna" or mode == "protein"), "Unknow mode type, choose b/w ``dna`` & ``protein``"
-    assert (kmer <= 8), "KMer size supported only till 8!"
+    if mode == "protein":
+      assert (kmer <= 4), "KMer size supported only till 4!"
+    else:
+      assert (kmer <= 4), "KMer size supported only till 8!"
     self.kmer, self.continuous = kmer, continuous
     if mode == "dna":
       self._tokenizer = DNA(kmer=kmer, continuous=continuous)
