@@ -2,7 +2,7 @@ from ._dna import DNA
 from ._protein import Protein
 from typing import List
 
-main_base_url = "https://github.com/delveopers/biosaic/blob/main/vocab/"  # fetches from main branch
+main_base_url = "https://raw.githubusercontent.com/delveopers/biosaic/main/vocab/"  # fetches from main branch
 dev_base_url = "https://raw.githubusercontent.com/delveopers/biosaic/dev/vocab/"  # fetches from dev branch
 hugginface_url = "https://huggingface.co/shivendrra/BiosaicTokenizer/resolve/main/kmers/"  # fetches from huggingface librrary
 
