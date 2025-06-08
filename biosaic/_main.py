@@ -27,18 +27,18 @@ class Tokenizer:
 
       Args:
         mode (str): Type of sequence to tokenize. Should be either "dna" or "protein".
-        kmer (int): The k-mer length used for tokenization. Maximum allowed is 8.
+        kmer (int): The k-mer length used for tokenization. Maximum allowed is 8 for DNA and 4 for protein.
         continuous (bool): If True, enables sliding-window tokenization (i.e., overlapping k-mers).
                            If False, tokenizes in fixed non-overlapping k-mer chunks.
 
       Raises:
         AssertionError: If an invalid mode is specified or k-mer size is above supported limit.
     """
-    assert (mode == "dna" or mode == "protein"), "Unknow mode type, choose b/w ``dna`` & ``protein``"
+    assert (mode == "dna" or mode == "protein"), "Unknown mode type, choose b/w ``dna`` & ``protein``"
     if mode == "protein":
-      assert (kmer <= 4), "KMer size supported only till 4!"
+      assert (kmer <= 4), "KMer size supported only till 4 for protein!"
     else:
-      assert (kmer <= 4), "KMer size supported only till 8!"
+      assert (kmer <= 8), "KMer size supported only till 8 for DNA!"
     self.kmer, self.continuous = kmer, continuous
     if mode == "dna":
       self._tokenizer = DNA(kmer=kmer, continuous=continuous)
@@ -86,7 +86,7 @@ class Tokenizer:
     """
     return self._tokenizer.tokenize(sequence)
 
-  def detokenize(self, ids: List[str]) ->str:
+  def detokenize(self, ids: List[str]) -> str:
     """
       Combines k-mer tokens into the original sequence.
 
@@ -94,7 +94,7 @@ class Tokenizer:
         ids (List[str]): List of k-mer tokens.
       Returns:
         str: Reconstructed sequence from tokenized substrings.
-      """
+    """
     return self._tokenizer.detokenize(ids)
 
   @property
