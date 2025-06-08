@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-class ModelConfig:
+class EVOConfig:
   DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
   A = 4        # DNA alphabet
   C = 21       # 21 letter for amino acid & 4 for dna
@@ -160,7 +160,7 @@ class Block(nn.Module):
     return msa, pair
 
 class Evoformer(nn.Module):
-  def __init__(self, params: ModelConfig):
+  def __init__(self, params: EVOConfig):
     """
       A: alphabet size (e.g. 4 for DNA, 21 for protein)
       C: number of initial pair features

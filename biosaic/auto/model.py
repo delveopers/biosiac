@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import math
 
-class ModelConfig:
+class VQConfig:
   d_model: int = 128
   in_dim: int = 4
   n_embed: int = 512
@@ -103,7 +103,7 @@ class Quantizer(nn.Module):
     return z_q, loss, encoding_indices.view(B, L)
 
 class DNA_VQVAE(nn.Module):
-  def __init__(self, args: ModelConfig):
+  def __init__(self, args: VQConfig):
     super().__init__()
     self.encoder = Encoder(
       args.in_dim, 
