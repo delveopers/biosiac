@@ -7,7 +7,7 @@ class DNA:
     self.kmer = kmer
     self.continuous = continuous
     self._base_chars = ['A', 'T', 'G', 'C', '-']   # upper-case dna letters
-    self._ids_to_taken, self.vocab = {}, {}
+    self.vocab = {}
 
     # Calculate vocab size:
     #  - continuous: exactly len(base_chars)**k distinct k-mers
@@ -52,7 +52,6 @@ class DNA:
 
   def decode(self, ids):
     tokens = self.ids_to_chars(ids)
-    print("tokens: ", tokens)
     return self.detokenize(tokens)
 
   def ids_to_chars(self, ids: list[int]):
