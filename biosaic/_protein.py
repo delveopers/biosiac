@@ -15,8 +15,8 @@ class Protein:
     self._ids_to_taken, self.vocab = {}, {}
 
     # Calculate vocab size:
-    #  - continuous: a general sliding vocab over all lengths up to k (sum of 4**i)
-    #  - non-continuous: exactly 4**k distinct k-mers
+    #  - continuous: exactly len(base_chars)**k distinct k-mers
+    #  - non-continuous: sum of len(base_chars)**i for lengths 1 to k
     if self.continuous:
       self.vocab_size = len(self._base_chars) ** kmer
     else:
@@ -33,6 +33,8 @@ class Protein:
 
   def detokenize(self, ids):
     if self.continuous:
+      if not ids:
+        return ""
       return "".join(ids[i][0] for i in range(len(ids))) + ids[-1][1:]
     else:
       return "".join(i for i in ids)
@@ -46,7 +48,7 @@ class Protein:
         combos.extend(product(letters, repeat=L))
     self.vocab = {''.join(c): i for i, c in enumerate(combos)}
     self.ids_to_token = {v: k for k, v in self.vocab.items()}
-    self.vocab_size = len(self.vocab.items())
+    self.vocab_size = len(self.vocab)
 
   def encode(self, sequence):
     sequence = sequence.upper() # ensures sequence entered is upper-cased
@@ -76,7 +78,7 @@ class Protein:
     Args:
       chars (List[str]): list containing tokenized chars for id mapping
     Returns:
-      Lits: list with the respective ids
+      List: list with the respective ids
     """
     assert isinstance(chars, list) and len(chars) > 0, "chars must be a non-empty list"
     assert isinstance(chars[0], str), "only accepts tokenized strings"
@@ -90,7 +92,7 @@ class Protein:
       ids (List[str]): list containing tokenized chars
       file (Optional|None): file path
     Returns:
-      dictonary: dictonary containing mapped true/false pairs for verification
+      dictionary: dictionary containing mapped true/false pairs for verification
     """
     verified = []
     ids = self.ids_to_chars(ids) if isinstance(ids[0], int) else ids
@@ -104,19 +106,19 @@ class Protein:
     return verified
 
   def save(self, path, as_json=False):
-      os.makedirs(os.path.dirname(path), exist_ok=True)
-      data = {
-        "kmer": self.kmer,
-        "vocab_size": self.vocab_size,
-        "trained_vocab": self.vocab
-      }
-      if as_json:
-        with open(path + ".json", "w", encoding="utf-8") as f:
-          json.dump(data, f, indent=2)
-      else:
-        with open(path + ".model", "wb") as f:
-          pickle.dump(data, f)
-      print(f"DEBUGG INFO[104] [Saved] Vocabulary saved to {path + ('.json' if as_json else '.model')}")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    data = {
+      "kmer": self.kmer,
+      "vocab_size": self.vocab_size,
+      "trained_vocab": self.vocab
+    }
+    if as_json:
+      with open(path + ".json", "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+    else:
+      with open(path + ".model", "wb") as f:
+        pickle.dump(data, f)
+    print(f"DEBUGG INFO[104] [Saved] Vocabulary saved to {path + ('.json' if as_json else '.model')}")
 
   def load(self, model_path: str):
     def is_url(path):
@@ -125,8 +127,11 @@ class Protein:
     if is_url(model_path):
       # print(f"DEBUGG INFO[200] Fetching remote model from: {model_path}")
       with tempfile.NamedTemporaryFile(delete=False, suffix=".model" if model_path.endswith(".model") else ".json") as tmp_file:
-        urllib.request.urlretrieve(model_path.replace("blob/", ""), tmp_file.name)
-        model_path = tmp_file.name
+        try:
+          urllib.request.urlretrieve(model_path.replace("blob/", ""), tmp_file.name)
+          model_path = tmp_file.name
+        except Exception as e:
+          raise RuntimeError(f"Failed to download model from {model_path}: {e}")
 
     if model_path.endswith(".json"):
       with open(model_path, "r", encoding="utf-8") as f:
@@ -138,7 +143,6 @@ class Protein:
       raise TypeError("Only supports vocab file format `.model` & `.json`")
 
     self.vocab = data["trained_vocab"]
-    self.vocab_size = data.get("vocab_size", None)
-    self.kmer = data.get("kmer", None)
+    self.vocab_size = data.get("vocab_size", len(self.vocab))
+    self.kmer = data.get("kmer", self.kmer)
     self.ids_to_token = {v: k for k, v in self.vocab.items()}
-    # print(f"DEBUGG INFO[201] Vocab loaded successfully with {self.vocab_size} size")
