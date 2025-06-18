@@ -1,6 +1,7 @@
 from itertools import product
 import json, pickle
 import os, tempfile, urllib, requests
+import numpy as np
 
 class DNA:
   def __init__(self, kmer: int, continuous: bool=True):
@@ -140,3 +141,20 @@ class DNA:
     self.vocab_size = data.get("vocab_size", len(self.vocab))
     self.kmer = data.get("kmer", self.kmer)
     self.ids_to_token = {v: k for k, v in self.vocab.items()}
+
+  def one_hot_encode(self, sequence):
+    tokens = self.tokenize(sequence.upper())
+    one_hot = np.zeros((len(tokens), len(self.vocab)), dtype=int)
+    for i, token in enumerate(tokens):
+      if token in self.vocab:
+        one_hot[i, self.vocab[token]] = 1
+    return one_hot
+
+  def reverse_complement(self, sequence):
+    complement = {'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G', '-': '-'}
+    return ''.join(complement.get(base, base) for base in reversed(sequence.upper()))
+
+  def pad_sequence(self, sequence, target_length, pad_char='-'):
+    if len(sequence) >= target_length:
+      return sequence[:target_length]
+    return sequence + pad_char * (target_length - len(sequence))

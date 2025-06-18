@@ -1,6 +1,7 @@
 from itertools import product
 import json, pickle
 import os, tempfile, urllib, requests
+import numpy as np
 
 AMINO_ACIDS = [
   'A','R','N','D','C','Q','E','G','H','I',
@@ -13,7 +14,7 @@ class Protein:
     self.continuous = continuous
     self._base_chars = AMINO_ACIDS   # upper-case Protein letters
     self._ids_to_taken, self.vocab = {}, {}
-
+ 
     # Calculate vocab size:
     #  - continuous: exactly len(base_chars)**k distinct k-mers
     #  - non-continuous: sum of len(base_chars)**i for lengths 1 to k
@@ -146,3 +147,19 @@ class Protein:
     self.vocab_size = data.get("vocab_size", len(self.vocab))
     self.kmer = data.get("kmer", self.kmer)
     self.ids_to_token = {v: k for k, v in self.vocab.items()}
+
+  def one_hot_encode(self, sequence):
+    tokens = self.tokenize(sequence.upper())
+    one_hot = np.zeros((len(tokens), len(self.vocab)), dtype=int)
+    for i, token in enumerate(tokens):
+      if token in self.vocab:
+        one_hot[i, self.vocab[token]] = 1
+    return one_hot
+
+  def pad_sequence(self, sequence, target_length, pad_char='-'):
+    if len(sequence) >= target_length:
+      return sequence[:target_length]
+    return sequence + pad_char * (target_length - len(sequence))
+
+  def reverse_complement(self, sequence):
+    raise NotImplementedError("Proteins don't have reverse complement! You dumbass!!!")
