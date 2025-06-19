@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from typing import *
+from torch.serialization import add_safe_globals
 from .model import DNA_VQVAE, VQConfig
 
 class DNA_VQVAEEncoder(nn.Module):
@@ -39,32 +40,58 @@ class DNA_VQVAEDecoder(nn.Module):
     """Alias for forward method"""
     return self.forward(indices)
 
-# Utility function to create encoder/decoder from trained model
-def create_encoder_decoder(model_path: str, config: Optional[VQConfig] = None) -> tuple[DNA_VQVAEEncoder, DNA_VQVAEDecoder]:
+def create_encoder_decoder(model_path: str, vocab_size: int) -> tuple[DNA_VQVAEEncoder, DNA_VQVAEDecoder]:
   """
-  Create separate encoder and decoder instances from a trained VQ-VAE model
-  
+  Create encoder and decoder instances from a trained VQ-VAE model checkpoint.
+
+  Handles both old (pickled VQConfig) and new (dict-based) config formats safely.
+
   Args:
-    model_path: Path to the trained model checkpoint
-    config: Model configuration (if not provided, will try to load from checkpoint)
-  
+    model_path: Path to the checkpoint
+    vocab_size: Vocabulary size used for training
+
   Returns:
-    Tuple of (encoder, decoder) instances
+    Tuple of (encoder, decoder)
   """
-  if config is None:
-    # Try to load config from checkpoint
-    checkpoint = torch.load(model_path, map_location='cpu')
-    if 'config' in checkpoint:
-      config = checkpoint['config']
+
+  try:
+    add_safe_globals([VQConfig])      # Trust only if loading old checkpoint (pickle-based config)
+    checkpoint = torch.load(model_path, map_location='cuda', weights_only=False)
+    raw_config = checkpoint['config']
+
+    # Convert config if it's a dict (new style)
+    if isinstance(raw_config, dict):
+      config = VQConfig(**raw_config)
     else:
-      raise ValueError("Config not found in checkpoint and not provided")
-  
-  # Create and load the main model
-  vqvae = DNA_VQVAE(config)
-  vqvae.load_state_dict(torch.load(model_path, map_location='cpu')['model_state_dict'])
-  
-  # Create separate encoder and decoder
+      config = raw_config  # old pickled VQConfig object
+
+  except Exception as e:
+    raise RuntimeError(f"Failed to load checkpoint config from {model_path}: {e}")
+
+  # Create and load model
+  vqvae = DNA_VQVAE(config, vocab_size)
+  vqvae.load_state_dict(checkpoint['model_state_dict'])
+
+  # Freeze and return encoder/decoder
   encoder = DNA_VQVAEEncoder(vqvae)
   decoder = DNA_VQVAEDecoder(vqvae)
-  
   return encoder, decoder
+
+# sequence = "ATTTGGGGGATTAGTTGGGCGAACGGGTGAGTAACACGTGGGCAATCTGCCCTGCACTCTGGGACAAGCCCTGGAAACGGGGTCTAATACCGGATATGACCACTAGGGGCATCCCTTGGTGGTGTAAAGCTCCGGCGGTGCAGGATGACCCCGCGGCCTATCACCTTGTTGGTGAGGTAACGGCTCACCAAGGCAACAACGGGTAGCCGGCCTGAAAGGGCAACCGGCCACACTGGGACTGAAACACGGCCCAAACTCC"
+# tokenizer = bio.Tokenizer("dna", 4, True)
+
+# dna_ids = tokenizer.encode(sequence)  # [123, 89, 201, ...] (0-255 range)
+# one_hot = torch.nn.functional.one_hot(torch.tensor(dna_ids), num_classes=tokenizer._tokenizer.vocab_size).float()
+
+# vqvae_encoder, vqvae_decoder = create_encoder_decoder(
+#   model_path="/content/drive/MyDrive/checkpoints/best_model.pth",
+#   vocab_size=custom_vocab_size
+# )
+
+# vq_indices = vqvae_encoder(one_hot)
+# reconstructed_one_hot = vqvae_decoder(vq_indices)
+# reconstructed_dna_ids = torch.argmax(reconstructed_one_hot, dim=-1)
+# reconstructed_sequence = tokenizer.decode(reconstructed_dna_ids.tolist()[0])
+
+# print(vq_indices)
+# print(reconstructed_sequence)
