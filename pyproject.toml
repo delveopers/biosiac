@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "biosaic"
-version = "0.1.2"
+version = "0.1.3"
 description = "Biosaic: a lightweight DNA and protein k-mer tokenizer with pre-trained vocab support."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -15,7 +15,7 @@ license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 
 authors = [
-  { name = "Shivendra Singh", email = "shivharsh44@gmail.com" },
+  { name = "Shivendra S", email = "shivharsh44@gmail.com" },
 ]
 keywords = ["bioinformatics", "tokenizer", "dna", "protein", "kmer", "machine-learning"]
 classifiers = [
@@ -36,7 +36,7 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/delveopers/biosaic"
 Source = "https://github.com/delveopers/biosaic"
-Documentation = "https://github.com/delveopers/biosaic/docs"
+Documentation = "https://devsorg.vercel.app/docs/Biosaic/"
 
 [tool.setuptools]
 # no package-dir needed since biosaic/ sits at project root
