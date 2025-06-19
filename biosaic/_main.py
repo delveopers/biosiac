@@ -97,6 +97,19 @@ class Tokenizer:
     """
     return self._tokenizer.detokenize(ids)
 
+  def one_hot(self, sequence):
+    return self._tokenizer.one_hot_encode(sequence)
+
+  def reverse_complement(self, sequence):
+    return self._tokenizer.reverse_complement(sequence)
+
+  def pad_sequence(self, sequence, target_length, pad_char="-"):
+    return self._tokenizer.pad_sequence(sequence, target_length, pad_char)
+
+  @property
+  def vocab_size(self):
+    return self._tokenizer.vocab_size
+
   @property
   def vocab(self):
     return self._tokenizer.vocab
