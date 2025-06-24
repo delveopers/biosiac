@@ -13,7 +13,7 @@ class DNA:
 
     # Handle special tokens
     self.special_tokens = special_tokens or ['<S>', '</S>', '<P>', '<C>', '<M>'] if special_tokens != False else []
-    self.has_special_tokens = len(self.special_tokens) > 0
+    self.has_special_tokens = not self.continuous
 
     # Special tokens only work with continuous=False
     if self.has_special_tokens and continuous:
@@ -141,18 +141,18 @@ class DNA:
 
     self.vocab = data["trained_vocab"]
     self.kmer = data.get("kmer", self.kmer)
-    initial_special_tokens = self.special_tokens or []
-    self.special_tokens = list(dict.fromkeys(data.get("special_tokens", []) + initial_special_tokens))
-    self.has_special_tokens = len(self.special_tokens) > 0
     self.continuous = data.get("continuous", self.continuous)
     self.ids_to_token = {v: k for k, v in self.vocab.items()}
+    self.has_special_tokens = not self.continuous
+    if self.has_special_tokens:
+      self.special_tokens = list(dict.fromkeys(data.get("special_tokens", [])))
 
-    max_id = max(self.vocab.values(), default=-1)
-    for token in self.special_tokens:
-      if token not in self.vocab:
-        max_id += 1
-        self.vocab[token] = max_id
-        self.ids_to_token[max_id] = token
+      max_id = max(self.vocab.values(), default=-1)
+      for token in self.special_tokens:
+        if token not in self.vocab:
+          max_id += 1
+          self.vocab[token] = max_id
+          self.ids_to_token[max_id] = token
     self.vocab_size = len(self.vocab)
 
   def one_hot_encode(self, sequence):

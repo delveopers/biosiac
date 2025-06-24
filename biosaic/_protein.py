@@ -16,8 +16,8 @@ class Protein:
     self._base_chars = AMINO_ACIDS
     self._ids_to_taken, self.vocab = {}, {}
     self.special_tokens = special_tokens or ['<S>', '</S>', '<P>', '<C>', '<M>'] if special_tokens != False else []
-    self.has_special_tokens = len(self.special_tokens) > 0
-    
+    self.has_special_tokens = not self.continuous
+
     # Special tokens only work with continuous=False
     if self.has_special_tokens and continuous:
       raise ValueError("Special tokens are only supported with continuous=False")
@@ -44,7 +44,7 @@ class Protein:
       if any(ch not in self._base_chars for ch in sequence):
         raise ValueError("Invalid character in Protein sequence")
       return [sequence[i:i+self.kmer] for i in range(len(sequence) - self.kmer + 1)] if self.continuous else [sequence[i:i+self.kmer] for i in range(0, len(sequence), self.kmer)]
-    
+
     # Handle special tokens (only works with continuous=False)
     tokens = []
     for part in self._split_with_special_tokens(sequence):
@@ -146,18 +146,18 @@ class Protein:
 
     self.vocab = data["trained_vocab"]
     self.kmer = data.get("kmer", self.kmer)
-    initial_special_tokens = self.special_tokens or []
-    self.special_tokens = list(dict.fromkeys(data.get("special_tokens", []) + initial_special_tokens))
-    self.has_special_tokens = len(self.special_tokens) > 0
     self.continuous = data.get("continuous", self.continuous)
     self.ids_to_token = {v: k for k, v in self.vocab.items()}
+    self.has_special_tokens = not self.continuous
+    if self.has_special_tokens:
+      self.special_tokens = list(dict.fromkeys(data.get("special_tokens", [])))
 
-    max_id = max(self.vocab.values(), default=-1)
-    for token in self.special_tokens:
-      if token not in self.vocab:
-        max_id += 1
-        self.vocab[token] = max_id
-        self.ids_to_token[max_id] = token
+      max_id = max(self.vocab.values(), default=-1)
+      for token in self.special_tokens:
+        if token not in self.vocab:
+          max_id += 1
+          self.vocab[token] = max_id
+          self.ids_to_token[max_id] = token
     self.vocab_size = len(self.vocab)
 
   def one_hot_encode(self, sequence):
