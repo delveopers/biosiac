@@ -15,11 +15,23 @@ class Protein:
     self.continuous = continuous
     self._base_chars = AMINO_ACIDS
     self._ids_to_taken, self.vocab = {}, {}
-    self.special_tokens = special_tokens or ['<S>', '</S>', '<P>', '<C>', '<M>'] if special_tokens != False else []
-    self.has_special_tokens = not self.continuous
 
-    # Special tokens only work with continuous=False
-    if self.has_special_tokens and continuous:
+    # handle special tokens
+    self.init_special_tokens = ['<S>', '</S>', '<P>', '<C>', '<M>']
+
+    # setting has_special_tokens first based on continuous mode
+    self.has_special_tokens = not self.continuous
+    if special_tokens is False:
+      self.special_tokens = []
+      self.has_special_tokens = False
+    elif special_tokens is None:
+      # using default special tokens only if continuous=False
+      self.special_tokens = self.init_special_tokens if not self.continuous else []
+    else:
+      self.special_tokens = special_tokens
+
+    # special tokens only work with continuous=False
+    if self.special_tokens and continuous:
       raise ValueError("Special tokens are only supported with continuous=False")
 
     if self.continuous:
@@ -150,7 +162,8 @@ class Protein:
     self.ids_to_token = {v: k for k, v in self.vocab.items()}
     self.has_special_tokens = not self.continuous
     if self.has_special_tokens:
-      self.special_tokens = list(dict.fromkeys(data.get("special_tokens", [])))
+      loaded_special_tokens = self.special_tokens
+      self.special_tokens = list(dict.fromkeys(data.get("special_tokens", []) + loaded_special_tokens))
 
       max_id = max(self.vocab.values(), default=-1)
       for token in self.special_tokens:
@@ -162,6 +175,7 @@ class Protein:
 
   def one_hot_encode(self, sequence):
     tokens = self.tokenize(sequence.upper())
+    print(len(tokens), tokens)
     one_hot = np.zeros((len(tokens), len(self.vocab)), dtype=int)
     for i, token in enumerate(tokens):
       if token in self.vocab:

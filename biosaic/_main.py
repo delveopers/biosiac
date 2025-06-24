@@ -30,10 +30,10 @@ class Tokenizer:
         mode (str): Type of sequence to tokenize. Should be either "dna" or "protein".
         kmer (int): The k-mer length used for tokenization. Maximum allowed is 8 for DNA and 4 for protein.
         continuous (bool): If True, enables sliding-window tokenization (i.e., overlapping k-mers).
-                           If False, tokenizes in fixed non-overlapping k-mer chunks.
+                          If False, tokenizes in fixed non-overlapping k-mer chunks.
         special_tokens (list or None): List of special tokens to add to vocabulary. 
-                                       If None, uses default ['<s>', '</s>', '<p>', '<c>', '<m>'].
-                                       If False, no special tokens are added.
+                                      If None, uses default ['<s>', '</s>', '<p>', '<c>', '<m>'].
+                                      If False, no special tokens are added.
 
       Raises:
         AssertionError: If an invalid mode is specified or k-mer size is above supported limit.
@@ -45,6 +45,7 @@ class Tokenizer:
     else:
       assert (kmer <= 8), "KMer size supported only till 8 for DNA!"
     self.kmer, self.continuous, self.special_tokens = kmer, continuous, special_tokens
+    
     if mode == "dna":
       self._tokenizer = DNA(kmer=kmer, continuous=continuous, special_tokens=special_tokens)
     else:

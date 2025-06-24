@@ -9,17 +9,26 @@ class DNA:
     self.kmer = kmer
     self.continuous = continuous
     self._base_chars = ['A', 'T', 'G', 'C', '-']
-    self.vocab = {}
+    self._ids_to_taken, self.vocab = {}, {}
 
-    # Handle special tokens
-    self.special_tokens = special_tokens or ['<S>', '</S>', '<P>', '<C>', '<M>'] if special_tokens != False else []
+    # handle special tokens
+    self.init_special_tokens = ['<S>', '</S>', '<P>', '<C>', '<M>']
+
+    # setting has_special_tokens first based on continuous mode
     self.has_special_tokens = not self.continuous
+    if special_tokens is False:
+      self.special_tokens = []
+      self.has_special_tokens = False
+    elif special_tokens is None:
+      # using default special tokens only if continuous=False
+      self.special_tokens = self.init_special_tokens if not self.continuous else []
+    else:
+      self.special_tokens = special_tokens
 
-    # Special tokens only work with continuous=False
-    if self.has_special_tokens and continuous:
+    # special tokens only work with continuous=False
+    if self.special_tokens and continuous:
       raise ValueError("Special tokens are only supported with continuous=False")
 
-    # Calculate base vocab size
     if self.continuous:
       self.vocab_size = len(self._base_chars) ** kmer
     else:
@@ -40,7 +49,16 @@ class DNA:
     if not self.has_special_tokens:
       if any(ch not in self._base_chars for ch in sequence):
         raise ValueError("Invalid character in DNA sequence")
-      return [sequence[i:i+self.kmer] for i in range(len(sequence) - self.kmer + 1)] if self.continuous else [sequence[i:i+self.kmer] for i in range(0, len(sequence), self.kmer)]
+      if self.continuous:
+        return [sequence[i:i+self.kmer] for i in range(len(sequence) - self.kmer + 1)]
+      else:
+        # Non-continuous: split into non-overlapping k-mers
+        tokens = []
+        for i in range(0, len(sequence), self.kmer):
+          token = sequence[i:i+self.kmer]
+          if token:  # Only add non-empty tokens
+            tokens.append(token)
+        return tokens
 
     tokens = []
     for part in self._split_with_special_tokens(sequence):
@@ -49,7 +67,11 @@ class DNA:
       else:
         if any(ch not in self._base_chars for ch in part):
           raise ValueError("Invalid character in DNA sequence")
-        tokens.extend([part[i:i+min(self.kmer, len(part)-i)] for i in range(0, len(part), self.kmer) if i < len(part)])
+        # Non-continuous: split into non-overlapping k-mers
+        for i in range(0, len(part), self.kmer):
+          token = part[i:i+self.kmer]
+          if token:  # Only add non-empty tokens
+            tokens.append(token)
     return tokens
 
   def detokenize(self, ids):
@@ -145,7 +167,8 @@ class DNA:
     self.ids_to_token = {v: k for k, v in self.vocab.items()}
     self.has_special_tokens = not self.continuous
     if self.has_special_tokens:
-      self.special_tokens = list(dict.fromkeys(data.get("special_tokens", [])))
+      loaded_special_tokens = self.special_tokens
+      self.special_tokens = list(dict.fromkeys(data.get("special_tokens", []) + loaded_special_tokens))
 
       max_id = max(self.vocab.values(), default=-1)
       for token in self.special_tokens:
