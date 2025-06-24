@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from collections import defaultdict
 
 class CGR:
   def __init__(self, size=1000):
@@ -21,83 +20,72 @@ class CGR:
 
   def create_heatmap(self, points):
     grid = np.zeros((self.size, self.size))
-    coords = np.array([(int(y * (self.size - 1)), int(x * (self.size - 1))) for x, y in points])
-    valid_mask = (coords[:, 0] >= 0) & (coords[:, 0] < self.size) & (coords[:, 1] >= 0) & (coords[:, 1] < self.size)
-    coords = coords[valid_mask]
-
-    if len(coords) > 0:
-      # Vectorized point spreading using broadcasting
-      offsets = np.array([[-1,-1], [-1,0], [-1,1], [0,-1], [0,0], [0,1], [1,-1], [1,0], [1,1]])
-      weights = np.array([0.5, 0.5, 0.5, 0.5, 1.0, 0.5, 0.5, 0.5, 0.5])
-
-      expanded_coords = coords[:, None, :] + offsets[None, :, :]
-      expanded_coords = expanded_coords.reshape(-1, 2)
-      expanded_weights = np.repeat(weights, len(coords))
-
-      # Filter valid coordinates
-      valid = (expanded_coords[:, 0] >= 0) & (expanded_coords[:, 0] < self.size) & (expanded_coords[:, 1] >= 0) & (expanded_coords[:, 1] < self.size)
-      # Use np.add.at for fast accumulation
-      np.add.at(grid, (expanded_coords[valid, 0], expanded_coords[valid, 1]), expanded_weights[valid])
-    
+    coords = [(int(y * (self.size - 1)), int(x * (self.size - 1))) for x, y in points]
+    for i, j in coords:
+      if 0 <= i < self.size and 0 <= j < self.size: grid[i, j] += 1
     return grid
 
   def create_multicolor_heatmap(self, sequence):
-    base_grids = {base: np.zeros((self.size, self.size)) for base in 'ATGC'}
+    # create separate point lists for each base
+    base_points = {'A': [], 'T': [], 'G': [], 'C': []}
     self.reset()
     
     for base in sequence:
       if base.upper() in self.corners:
         x, y = self.step(base)
-        i, j = int(y * (self.size - 1)), int(x * (self.size - 1))
-        if 0 <= i < self.size and 0 <= j < self.size:
-          base_grids[base.upper()][i, j] += 1
+        base_points[base.upper()].append((x, y))
     
-    # Apply Gaussian blur for smoother visualization
-    from scipy.ndimage import gaussian_filter
-    sigma = max(1, self.size // 2000)  # Adaptive blur based on size
-    for base in base_grids:
-      if base_grids[base].max() > 0:
-        base_grids[base] = gaussian_filter(base_grids[base], sigma=sigma)
-
-    # Enhanced color mapping with better contrast
+    # create rgb image
     rgb_image = np.zeros((self.size, self.size, 3))
-    rgb_image[:, :, 0] = base_grids['A'] * 1.5 + base_grids['C'] * 0.8  # Red: A dominant, C mixed
-    rgb_image[:, :, 1] = base_grids['T'] * 1.5 + base_grids['C'] * 0.8  # Green: T dominant, C mixed
-    rgb_image[:, :, 2] = base_grids['G'] * 1.5 + base_grids['A'] * 0.3  # Blue: G dominant, A slight mix
 
-    # Enhanced normalization with gamma correction for brightness
-    for channel in range(3):
-      if rgb_image[:, :, channel].max() > 0:
-        rgb_image[:, :, channel] = rgb_image[:, :, channel] / rgb_image[:, :, channel].max()
-        rgb_image[:, :, channel] = np.power(rgb_image[:, :, channel], 0.7)  # Gamma correction
+    # map each base to color channels with proper intensity
+    for base, color_channel in [('A', 0), ('T', 1), ('G', 2)]:  # red, green, blue
+      if base_points[base]:
+        coords = [(int(y * (self.size - 1)), int(x * (self.size - 1))) for x, y in base_points[base]]
+        for i, j in coords:
+          if 0 <= i < self.size and 0 <= j < self.size:
+            rgb_image[i, j, color_channel] += 1
 
-    # Boost overall brightness and saturation
-    rgb_image = np.clip(rgb_image * 2.5, 0, 1)
+    # handle C (cytosine) as magenta (red + blue)
+    if base_points['C']:
+      coords = [(int(y * (self.size - 1)), int(x * (self.size - 1))) for x, y in base_points['C']]
+      for i, j in coords:
+        if 0 <= i < self.size and 0 <= j < self.size:
+          rgb_image[i, j, 0] += 0.8  # red component
+          rgb_image[i, j, 2] += 0.8  # blue component
 
-    return rgb_image
+    # normalize each channel independently
+    for c in range(3):
+      if rgb_image[:, :, c].max() > 0:
+        rgb_image[:, :, c] = rgb_image[:, :, c] / rgb_image[:, :, c].max()
 
-  def visualize(self, sequence, title="CGR Visualization", cmap='hot', figsize=(10, 10), label: bool=False, multicolor: bool=True):
+    # apply gamma correction and brightness boost
+    rgb_image = np.power(rgb_image, 0.8) * 1.5
+    return np.clip(rgb_image, 0, 1)
+
+  def visualize(self, sequence, title="CGR Visualization", cmap='hot', figsize=(12, 10), label=False, multicolor=True):
+    plt.figure(figsize=figsize)
+
     if multicolor:
       rgb_heatmap = self.create_multicolor_heatmap(sequence)
-      plt.figure(figsize=figsize)
       plt.imshow(rgb_heatmap, origin='lower', extent=[0, 1, 0, 1])
-      plt.title(f"{title}\nSequence length: {len(sequence)} (A=Red, T=Green, G=Blue, C=Purple)")
+      plt.title(f"{title}\nSequence length: {len(sequence)} (A=Red, T=Green, G=Blue, C=Magenta)")
     else:
       points = self.generate_points(sequence)
       heatmap = self.create_heatmap(points)
-      plt.figure(figsize=figsize)
-      plt.imshow(heatmap, cmap=cmap, origin='lower', extent=[0, 1, 0, 1])
-      plt.colorbar(label='Frequency')
+      # apply log scaling for better visualization
+      heatmap_log = np.log1p(heatmap)  # log(1+x) to handle zeros
+      plt.imshow(heatmap_log, cmap=cmap, origin='lower', extent=[0, 1, 0, 1])
+      plt.colorbar(label='log(frequency + 1)')
       plt.title(f"{title}\nSequence length: {len(sequence)}")
-    
+
     plt.xlabel('X'); plt.ylabel('Y')
 
-    # Add corner labels
+    # add corner labels with better visibility
     if label:
-      colors = ['red', 'lime', 'cyan', 'magenta'] if multicolor else ['white'] * 4
-      corners_text = [('A', 0.02, 0.02, colors[0]), ('T', 0.98, 0.02, colors[1]), ('G', 0.02, 0.98, colors[2]), ('C', 0.98, 0.98, colors[3])]
-      for text, x, y, color in corners_text:
-        plt.text(x, y, text, fontsize=14, fontweight='bold', color=color, bbox=dict(boxstyle='circle', facecolor='black', alpha=0.7))
-    
+      corner_props = [('A', 0.02, 0.02, 'red'), ('T', 0.98, 0.02, 'lime'), ('G', 0.02, 0.98, 'cyan'), ('C', 0.98, 0.98, 'magenta')]
+      for text, x, y, color in corner_props:
+        plt.text(x, y, text, fontsize=16, fontweight='bold', color=color, bbox=dict(boxstyle='circle,pad=0.3', facecolor='black', alpha=0.8, edgecolor=color))
+
     plt.tight_layout()
     return plt
