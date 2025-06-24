@@ -1,333 +1,512 @@
 # Biosaic Tokenizer Documentation
 
-A Python library for tokenizing DNA and protein sequences using k-mer based approaches, designed for bioinformatics and computational biology applications.
+## Overview
+
+Biosaic is a specialized tokenizer library designed for biological sequences, supporting both DNA and protein sequence tokenization. It provides k-mer based tokenization with support for continuous (sliding-window) and non-continuous (fixed-chunk) modes, along with special token handling for advanced biological sequence processing.
 
 ## Features
 
-- **Dual Mode Support**: Works with both DNA and protein sequences
-- **Flexible K-mer Sizes**: Support for k-mers up to 8 for DNA and 4 for proteins
-- **Two Tokenization Modes**:
-  - **Continuous**: Sliding-window approach with overlapping k-mers
-  - **Non-continuous**: Fixed-length non-overlapping chunks
-- **Remote Vocabulary Loading**: Automatically fetches pre-trained vocabularies
-- **Comprehensive Encoding/Decoding**: Full round-trip support for sequences
-- **Additional Utilities**: One-hot encoding, padding, reverse complement (DNA only)
+- **Dual Mode Support**: DNA and protein sequence tokenization
+- **Flexible K-mer Sizes**: Up to 8-mers for DNA, up to 4-mers for proteins
+- **Tokenization Modes**: Continuous (overlapping) and non-continuous (fixed-chunk)
+- **Special Tokens**: Support for sequence markup and control tokens
+- **Remote Vocabularies**: Pre-trained vocabularies loaded from remote repositories
+- **Comprehensive Methods**: Encoding, decoding, tokenization, and biological utilities
 
 ## Installation
 
 ```python
-# Import the tokenizer
 from biosaic import Tokenizer
 ```
 
 ## Quick Start
 
-### DNA Tokenization
+### Basic DNA Tokenization
 
 ```python
-# Initialize DNA tokenizer with 3-mer, continuous mode
+# Initialize DNA tokenizer with 3-mers
 dna_tokenizer = Tokenizer(mode="dna", kmer=3, continuous=True)
 
-# Example DNA sequence
-sequence = "ATGCGATCGATC"
-
-# Tokenize into k-mers
+# Tokenize a DNA sequence
+sequence = "ATCGATCG"
 tokens = dna_tokenizer.tokenize(sequence)
-print(tokens)  # ['ATG', 'TGC', 'GCG', 'CGA', 'GAT', 'ATC', 'TCG', 'CGA', 'GAT', 'ATC']
+print(tokens)  # ['ATC', 'TCG', 'CGA', 'GAT', 'ATC', 'TCG']
 
-# Encode to integer IDs
-encoded = dna_tokenizer.encode(sequence)
-print(encoded)  # [124, 89, 67, ...]
+# Encode to IDs
+ids = dna_tokenizer.encode(sequence)
+print(ids)  # [45, 89, 67, 123, 45, 89]
 
 # Decode back to sequence
-decoded = dna_tokenizer.decode(encoded)
-print(decoded)  # "ATGCGATCGATC"
+decoded = dna_tokenizer.decode(ids)
+print(decoded)  # "ATCGATCG"
 ```
 
-### Protein Tokenization
+### Basic Protein Tokenization
 
 ```python
-# Initialize protein tokenizer with 2-mer, continuous mode
+# Initialize protein tokenizer with 2-mers
 protein_tokenizer = Tokenizer(mode="protein", kmer=2, continuous=True)
 
-# Example protein sequence
-sequence = "MKTVRQERLKSIVRILERSKEPVSGAQLAEELSVSRQVIVQDIAYLRSLGYNIVATPRGYVLAGG"
-
-# Tokenize into k-mers
+# Tokenize a protein sequence
+sequence = "MKVLWAALLVTFLAGC"
 tokens = protein_tokenizer.tokenize(sequence)
-print(tokens[:5])  # ['MK', 'KT', 'TV', 'VR', 'RQ']
+print(tokens)  # ['MK', 'KV', 'VL', 'LW', 'WA', ...]
 
-# Encode and decode
-encoded = protein_tokenizer.encode(sequence)
-decoded = protein_tokenizer.decode(encoded)
+# Get vocabulary size
+print(protein_tokenizer.vocab_size)  # 441 (21^2 amino acids)
 ```
 
-## API Reference
+## Class Reference
 
-### Tokenizer Class
+### Tokenizer
+
+The main tokenizer class that handles both DNA and protein sequences.
 
 #### Constructor
 
 ```python
-Tokenizer(mode: str, kmer: int, continuous: bool = False)
+Tokenizer(mode: str, kmer: int, continuous: bool = False, special_tokens = None)
 ```
 
 **Parameters:**
-- `mode` (str): Sequence type - either "dna" or "protein"
+
+- `mode` (str): Sequence type - "dna" or "protein"
 - `kmer` (int): K-mer length (max 8 for DNA, max 4 for protein)
 - `continuous` (bool): Tokenization mode
-  - `True`: Sliding-window with overlapping k-mers
-  - `False`: Fixed non-overlapping chunks
+  - `True`: Sliding-window (overlapping k-mers)
+  - `False`: Fixed-chunk (non-overlapping k-mers)
+- `special_tokens` (list/None/False): Special token configuration
+  - `None`: Default tokens `['<S>', '</S>', '<P>', '<C>', '<M>']` (only with continuous=False)
+  - `list`: Custom special tokens
+  - `False`: No special tokens
+
+**Raises:**
+
+- `AssertionError`: Invalid mode or k-mer size
+- `ValueError`: Special tokens used with continuous=True
 
 #### Core Methods
 
-##### `tokenize(sequence: str) -> List[str]`
+##### encode(sequence: str) → List[int]
+
+Converts biological sequence to integer token IDs.
+
+```python
+dna_tokenizer = Tokenizer("dna", kmer=3, continuous=True)
+ids = dna_tokenizer.encode("ATCGAT")
+print(ids)  # [45, 89, 67, 123]
+```
+
+##### decode(ids: List[int]) → str
+
+Converts token IDs back to original sequence.
+
+```python
+sequence = dna_tokenizer.decode([45, 89, 67, 123])
+print(sequence)  # "ATCGAT"
+```
+
+##### tokenize(sequence: str) → List[str]
+
 Splits sequence into k-mer tokens.
 
 ```python
-tokenizer = Tokenizer("dna", kmer=3)
-tokens = tokenizer.tokenize("ATGCGA")
-# Returns: ['ATG', 'CGA'] (non-continuous) or ['ATG', 'TGC', 'GCG', 'CGA'] (continuous)
+tokens = dna_tokenizer.tokenize("ATCGAT")
+print(tokens)  # ['ATC', 'TCG', 'CGA', 'GAT']
 ```
 
-##### `detokenize(tokens: List[str]) -> str`
+##### detokenize(tokens: List[str]) → str
+
 Reconstructs sequence from k-mer tokens.
 
 ```python
-sequence = tokenizer.detokenize(['ATG', 'TGC', 'GCG'])
-# Returns: "ATGCG" (continuous) or "ATGTGCGCG" (non-continuous)
+sequence = dna_tokenizer.detokenize(['ATC', 'TCG', 'CGA', 'GAT'])
+print(sequence)  # "ATCGAT"
 ```
 
-##### `encode(sequence: str) -> List[int]`
-Converts sequence to integer token IDs.
+#### Biological Utility Methods
+
+##### one_hot(sequence: str) → numpy.ndarray
+
+Creates one-hot encoding matrix.
 
 ```python
-ids = tokenizer.encode("ATGCGA")
-# Returns: [45, 123, 67, 89] (example IDs)
+dna_tokenizer = Tokenizer("dna", kmer=2, continuous=False)
+one_hot_matrix = dna_tokenizer.one_hot("ATCG")
+print(one_hot_matrix.shape)  # (2, vocab_size)
 ```
 
-##### `decode(ids: List[int]) -> str`
-Converts integer IDs back to sequence.
+##### reverse_complement(sequence: str) → str
 
-```python
-sequence = tokenizer.decode([45, 123, 67, 89])
-# Returns: "ATGCGA"
-```
-
-#### Utility Methods
-
-##### `one_hot(sequence: str) -> numpy.ndarray`
-Creates one-hot encoding matrix for the sequence.
-
-```python
-one_hot_matrix = tokenizer.one_hot("ATGC")
-# Returns: numpy array of shape (n_tokens, vocab_size)
-```
-
-##### `reverse_complement(sequence: str) -> str` (DNA only)
-Returns reverse complement of DNA sequence.
+Returns reverse complement of DNA sequence (DNA only).
 
 ```python
 dna_tokenizer = Tokenizer("dna", kmer=3)
-rev_comp = dna_tokenizer.reverse_complement("ATGC")
-# Returns: "GCAT"
+rev_comp = dna_tokenizer.reverse_complement("ATCG")
+print(rev_comp)  # "CGAT"
 ```
 
-##### `pad_sequence(sequence: str, target_length: int, pad_char: str = "-") -> str`
+##### pad_sequence(sequence: str, target_length: int, pad_char: str = "-") → str
+
 Pads sequence to target length.
 
 ```python
-padded = tokenizer.pad_sequence("ATGC", target_length=10, pad_char="N")
-# Returns: "ATGCNNNNNN"
+padded = dna_tokenizer.pad_sequence("ATCG", 10)
+print(padded)  # "ATCG------"
 ```
 
 #### Properties
 
-##### `vocab_size: int`
-Returns the vocabulary size.
+##### vocab_size
+
+Returns vocabulary size.
 
 ```python
-print(tokenizer.vocab_size)  # e.g., 125 for DNA 3-mer continuous
+print(dna_tokenizer.vocab_size)  # 625 (5^4 for 4-mer DNA)
 ```
 
-##### `vocab: dict`
-Returns the vocabulary mapping (k-mer -> ID).
+##### vocab
+
+Returns vocabulary dictionary mapping tokens to IDs.
 
 ```python
-print(tokenizer.vocab)  # {'AAA': 0, 'AAT': 1, ...}
+print(dna_tokenizer.vocab['ATG'])  # 45
 ```
 
-## Usage Examples
+## Tokenization Modes
 
-### Example 1: Basic DNA Analysis
+### Continuous Mode (Sliding Window)
+
+Generates overlapping k-mers using a sliding window approach.
 
 ```python
-# Initialize tokenizer
-tokenizer = Tokenizer("dna", kmer=4, continuous=True)
-
-# Analyze a gene sequence
-gene_sequence = "ATGAAACGCATTAGCACCACCATTACCACCACCATCACCATTACCACATCCC"
-
-# Get k-mer tokens
-kmers = tokenizer.tokenize(gene_sequence)
-print(f"Number of 4-mers: {len(kmers)}")
-print(f"First 5 k-mers: {kmers[:5]}")
-
-# Encode for machine learning
-encoded_sequence = tokenizer.encode(gene_sequence)
-print(f"Encoded length: {len(encoded_sequence)}")
-
-# Get reverse complement
-rev_comp = tokenizer.reverse_complement(gene_sequence)
-print(f"Reverse complement: {rev_comp}")
+tokenizer = Tokenizer("dna", kmer=3, continuous=True)
+tokens = tokenizer.tokenize("ATCGATCG")
+print(tokens)  # ['ATC', 'TCG', 'CGA', 'GAT', 'ATC', 'TCG']
 ```
 
-### Example 2: Protein Sequence Processing
+**Use Cases:**
+
+- Preserving sequence continuity
+- Maximum information retention
+- Machine learning applications requiring dense representation
+
+### Non-Continuous Mode (Fixed Chunks)
+
+Splits sequence into non-overlapping k-mer chunks.
 
 ```python
-# Initialize protein tokenizer
-tokenizer = Tokenizer("protein", kmer=3, continuous=False)
-
-# Process protein sequence
-protein = "MKTVRQERLKSIVRILERSKEPVSGAQLAEELSVSRQVIVQDIAYLRSLGYNIVATPRGYVLAGG"
-
-# Non-overlapping 3-mers
-tokens = tokenizer.tokenize(protein)
-print(f"Non-overlapping 3-mers: {tokens}")
-
-# Create one-hot encoding for ML
-one_hot = tokenizer.one_hot(protein)
-print(f"One-hot shape: {one_hot.shape}")
+tokenizer = Tokenizer("dna", kmer=3, continuous=False)
+tokens = tokenizer.tokenize("ATCGATCG")
+print(tokens)  # ['ATC', 'GAT', 'CG']
 ```
 
-### Example 3: Batch Processing
+**Use Cases:**
+
+- Memory-efficient processing
+- When overlapping information is not needed
+- Compatible with special tokens
+
+## Special Tokens
+
+Special tokens provide sequence markup and control capabilities. They only work with `continuous=False`.
+
+### Default Special Tokens
+
+- `<S>`: Start of sequence
+- `</S>`: End of sequence
+- `<P>`: Padding token
+- `<C>`: Control token
+- `<M>`: Mask token
+
+### Usage Example
+
+```python
+# Initialize with special tokens
+tokenizer = Tokenizer("dna", kmer=3, continuous=False, special_tokens=['<S>', '</S>'])
+
+# Use special tokens in sequence
+sequence = "<S>ATCGATCG</S>"
+tokens = tokenizer.tokenize(sequence)
+print(tokens)  # ['<S>', 'ATC', 'GAT', 'CG', '</S>']
+
+# Encode with special tokens
+ids = tokenizer.encode(sequence)
+decoded = tokenizer.decode(ids)
+print(decoded)  # "<S>ATCGATCG</S>"
+```
+
+### Custom Special Tokens
+
+```python
+custom_tokens = ['<START>', '<END>', '<GENE>', '<PROMOTER>']
+tokenizer = Tokenizer("dna", kmer=2, continuous=False, special_tokens=custom_tokens)
+```
+
+## Advanced Usage Examples
+
+### Processing Multiple Sequences
 
 ```python
 def process_sequences(sequences, mode="dna", kmer=3):
-    """Process multiple sequences efficiently."""
-    tokenizer = Tokenizer(mode, kmer, continuous=True)
+    tokenizer = Tokenizer(mode=mode, kmer=kmer, continuous=True)
     
     results = []
     for seq in sequences:
-        encoded = tokenizer.encode(seq)
-        results.append({
-            'sequence': seq,
-            'encoded': encoded,
-            'length': len(encoded),
-            'vocab_coverage': len(set(encoded))
-        })
+        try:
+            tokens = tokenizer.tokenize(seq)
+            ids = tokenizer.encode(seq)
+            results.append({
+                'sequence': seq,
+                'tokens': tokens,
+                'ids': ids,
+                'length': len(tokens)
+            })
+        except ValueError as e:
+            print(f"Error processing {seq}: {e}")
     
     return results
 
 # Example usage
-dna_sequences = [
-    "ATGCGATCGATCGAATGC",
-    "GCATGCATGCATGCAT",
-    "TTTTAAAACCCCGGGG"
-]
-
+dna_sequences = ["ATCGATCG", "GCTAGCTA", "TTAACCGG"]
 results = process_sequences(dna_sequences)
-for result in results:
-    print(f"Sequence: {result['sequence'][:20]}...")
-    print(f"Encoded length: {result['length']}")
-    print(f"Unique tokens: {result['vocab_coverage']}")
-    print("---")
 ```
 
-### Example 4: Comparing Tokenization Modes
+### Batch Processing with Padding
 
 ```python
-sequence = "ATGCGATCGATCGAATGC"
+def create_padded_batch(sequences, tokenizer, max_length=None):
+    # Tokenize all sequences
+    all_tokens = [tokenizer.tokenize(seq) for seq in sequences]
+    
+    # Find maximum length if not specified
+    if max_length is None:
+        max_length = max(len(tokens) for tokens in all_tokens)
+    
+    # Pad and encode
+    batch_ids = []
+    for tokens in all_tokens:
+        # Truncate or pad token list
+        if len(tokens) > max_length:
+            tokens = tokens[:max_length]
+        else:
+            tokens.extend(['<P>'] * (max_length - len(tokens)))
+        
+        # Convert to IDs
+        ids = [tokenizer.vocab.get(token, 0) for token in tokens]
+        batch_ids.append(ids)
+    
+    return batch_ids
 
-# Continuous mode (overlapping)
-continuous_tokenizer = Tokenizer("dna", kmer=3, continuous=True)
-continuous_tokens = continuous_tokenizer.tokenize(sequence)
-
-# Non-continuous mode (non-overlapping)
-noncontinuous_tokenizer = Tokenizer("dna", kmer=3, continuous=False)
-noncontinuous_tokens = noncontinuous_tokenizer.tokenize(sequence)
-
-print(f"Original sequence: {sequence}")
-print(f"Continuous tokens ({len(continuous_tokens)}): {continuous_tokens}")
-print(f"Non-continuous tokens ({len(noncontinuous_tokens)}): {noncontinuous_tokens}")
-
-# Reconstruct sequences
-continuous_reconstructed = continuous_tokenizer.detokenize(continuous_tokens)
-noncontinuous_reconstructed = noncontinuous_tokenizer.detokenize(noncontinuous_tokens)
-
-print(f"Continuous reconstructed: {continuous_reconstructed}")
-print(f"Non-continuous reconstructed: {noncontinuous_reconstructed}")
+# Example
+tokenizer = Tokenizer("protein", kmer=2, continuous=False, special_tokens=['<P>'])
+sequences = ["MKVLWAALL", "VTFLAGC", "ACDEFGHIKLMNPQRSTVWY"]
+batch = create_padded_batch(sequences, tokenizer, max_length=10)
 ```
 
-## Advanced Features
-
-### Custom Vocabulary Paths
-
-The tokenizer automatically loads pre-trained vocabularies from remote repositories. The vocabulary files are organized as:
-
-- **Main branch**: `https://raw.githubusercontent.com/delveopers/biosaic/main/vocab/`
-- **Dev branch**: `https://raw.githubusercontent.com/delveopers/biosaic/dev/vocab/`
-- **HuggingFace**: `https://huggingface.co/shivendrra/BiosaicTokenizer/resolve/main/kmers/`
-
-Vocabulary files follow the naming convention:
-- Continuous: `{mode}/cont_{k}k.model`
-- Non-continuous: `{mode}/base_{k}k.model`
-
-### Error Handling
-
-The tokenizer includes robust error handling:
+### Sequence Analysis
 
 ```python
-try:
-    tokenizer = Tokenizer("dna", kmer=10)  # Too large
-except AssertionError as e:
-    print(f"Error: {e}")
+def analyze_sequence_composition(sequence, tokenizer):
+    tokens = tokenizer.tokenize(sequence)
+    
+    # Count token frequencies
+    from collections import Counter
+    token_counts = Counter(tokens)
+    
+    # Calculate statistics
+    total_tokens = len(tokens)
+    unique_tokens = len(token_counts)
+    most_common = token_counts.most_common(5)
+    
+    return {
+        'total_tokens': total_tokens,
+        'unique_tokens': unique_tokens,
+        'vocabulary_coverage': unique_tokens / tokenizer.vocab_size,
+        'most_common_tokens': most_common,
+        'token_distribution': dict(token_counts)
+    }
 
+# Example analysis
+dna_tokenizer = Tokenizer("dna", kmer=3, continuous=True)
+sequence = "ATCGATCGATCGATCG" * 10  # Longer sequence for analysis
+analysis = analyze_sequence_composition(sequence, dna_tokenizer)
+print(f"Vocabulary coverage: {analysis['vocabulary_coverage']:.2%}")
+```
+
+## Error Handling
+
+### Common Errors and Solutions
+
+#### Invalid Characters
+
+```python
 try:
     tokenizer = Tokenizer("dna", kmer=3)
-    tokenizer.encode("ATGXCGA")  # Invalid character
+    tokenizer.encode("ATCXGATCG")  # X is invalid
 except ValueError as e:
-    print(f"Error: {e}")
+    print(f"Invalid character error: {e}")
+    # Solution: Clean sequence or use valid DNA bases (A, T, G, C, -)
 ```
 
-## Supported Characters
+#### Special Tokens with Continuous Mode
 
-### DNA Sequences
-- Standard bases: `A`, `T`, `G`, `C`
-- Gap/padding: `-`
+```python
+try:
+    tokenizer = Tokenizer("dna", kmer=3, continuous=True, special_tokens=['<S>'])
+except ValueError as e:
+    print(f"Configuration error: {e}")
+    # Solution: Use continuous=False with special tokens
+```
 
-### Protein Sequences
-- All 20 standard amino acids: `A`, `R`, `N`, `D`, `C`, `Q`, `E`, `G`, `H`, `I`, `L`, `K`, `M`, `F`, `P`, `S`, `T`, `W`, `Y`, `V`
-- Gap/padding: `-`
+#### K-mer Size Limits
+
+```python
+try:
+    tokenizer = Tokenizer("protein", kmer=5)  # Too large
+except AssertionError as e:
+    print(f"K-mer size error: {e}")
+    # Solution: Use kmer <= 4 for proteins, kmer <= 8 for DNA
+```
 
 ## Performance Considerations
 
-- **K-mer Size**: Larger k-mers create exponentially larger vocabularies
-- **Continuous Mode**: Generates more tokens but preserves sequence information better
-- **Memory Usage**: Vocabulary size grows as `alphabet_size^k` for continuous mode
-- **Remote Loading**: First use requires internet connection to download vocabulary
+### Memory Usage
+
+- **Continuous mode**: Higher memory usage due to overlapping tokens
+- **Non-continuous mode**: More memory efficient
+- **Large k-mers**: Exponentially larger vocabularies
+
+### Speed Optimization
+
+```python
+# Pre-load tokenizer for repeated use
+tokenizer = Tokenizer("dna", kmer=4, continuous=True)
+
+# Batch process sequences
+sequences = ["ATCG" * 100 for _ in range(1000)]
+start_time = time.time()
+
+all_ids = [tokenizer.encode(seq) for seq in sequences]
+
+print(f"Processed {len(sequences)} sequences in {time.time() - start_time:.2f}s")
+```
+
+## Integration Examples
+
+### With Machine Learning
+
+```python
+import numpy as np
+
+def prepare_ml_data(sequences, tokenizer, max_length=100):
+    # Tokenize and encode
+    encoded_sequences = []
+    for seq in sequences:
+        ids = tokenizer.encode(seq)
+        # Pad or truncate
+        if len(ids) > max_length:
+            ids = ids[:max_length]
+        else:
+            ids.extend([0] * (max_length - len(ids)))  # 0 as padding ID
+        encoded_sequences.append(ids)
+    
+    return np.array(encoded_sequences)
+
+# Usage with neural networks
+tokenizer = Tokenizer("dna", kmer=3, continuous=True)
+sequences = ["ATCGATCG", "GCTAGCTA", "TTAACCGG"]
+X = prepare_ml_data(sequences, tokenizer)
+print(f"Input shape for ML model: {X.shape}")
+```
+
+### With Bioinformatics Pipelines
+
+```python
+def process_fasta_like_data(sequence_data, mode="dna", kmer=3):
+    tokenizer = Tokenizer(mode=mode, kmer=kmer, continuous=False, 
+                         special_tokens=['<S>', '</S>'])
+    
+    processed_data = []
+    for seq_id, sequence in sequence_data.items():
+        # Add sequence markers
+        marked_sequence = f"<S>{sequence}</S>"
+        
+        # Tokenize and encode
+        tokens = tokenizer.tokenize(marked_sequence)
+        ids = tokenizer.encode(marked_sequence)
+        
+        processed_data.append({
+            'id': seq_id,
+            'original': sequence,
+            'tokens': tokens,
+            'encoded': ids,
+            'length': len(sequence)
+        })
+    
+    return processed_data
+
+# Example usage
+sequences = {
+    'seq1': 'ATCGATCGATCG',
+    'seq2': 'GCTAGCTAGCTA',
+    'seq3': 'TTAACCGGTTAA'
+}
+processed = process_fasta_like_data(sequences)
+```
 
 ## Best Practices
 
-1. **Choose Appropriate K-mer Size**: Start with k=3 for DNA and k=2 for proteins
-2. **Mode Selection**: Use continuous for sequence modeling, non-continuous for feature extraction
-3. **Sequence Preprocessing**: Ensure sequences contain only valid characters
-4. **Batch Processing**: Process multiple sequences together for efficiency
-5. **Error Handling**: Always wrap tokenization in try-catch blocks for production code
+### Choosing K-mer Size
+
+- **Small k-mers (2-3)**: Better for short sequences, higher generalization
+- **Large k-mers (4-8)**: More specific, better for pattern recognition
+- **Consider sequence length**: k-mer should be much smaller than typical sequence length
+
+### Mode Selection
+
+- **Use continuous=True for**:
+  - Machine learning applications
+  - When sequence context is important
+  - Pattern recognition tasks
+
+- **Use continuous=False for**:
+  - Memory-constrained environments
+  - When special tokens are needed
+  - Simple sequence analysis
+
+### Special Token Strategy
+
+- Use meaningful special tokens for your application
+- Keep special tokens short and distinctive
+- Consider vocabulary size impact
+- Document special token meanings for reproducibility
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **"Unknown mode type" Error**: Ensure mode is exactly "dna" or "protein"
-2. **"KMer size supported only till X" Error**: Reduce k-mer size within supported limits
-3. **"Invalid character" Error**: Check sequence for unsupported characters
-4. **Network Issues**: Ensure internet connection for initial vocabulary download
+1. **Vocabulary loading fails**: Check internet connection and URL accessibility
+2. **Memory errors with large sequences**: Use smaller k-mers or non-continuous mode
+3. **Inconsistent results**: Ensure same tokenizer configuration across sessions
+4. **Special tokens not working**: Verify continuous=False is set
 
 ### Debug Information
 
-The tokenizer provides debug information during vocabulary loading and saving operations. Look for messages starting with "DEBUGG INFO" for troubleshooting.
+The library includes debug output for vocabulary loading:
 
-## License and Attribution
+```bash
+DEBUGG INFO[104] [Saved] Vocabulary saved to /path/to/vocab.model
+```
 
-This documentation covers the Biosaic Tokenizer library. Please refer to the original repository for license information and contribution guidelines.
+This helps verify that vocabularies are being loaded correctly from remote sources.
+
+## Version Information
+
+This documentation covers the Biosaic tokenizer library with support for:
+
+- DNA sequences (bases: A, T, G, C, -)
+- Protein sequences (20 standard amino acids + gap character)
+- Remote vocabulary loading from GitHub repositories
+- K-mer sizes up to 8 for DNA and 4 for proteins
+- Flexible tokenization modes and special token support
