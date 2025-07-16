@@ -187,7 +187,7 @@ class RNA:
     return one_hot
 
   def reverse_complement(self, sequence):
-    complement = {'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G', '-': '-'}
+    complement = {'A': 'U', 'U': 'A', 'G': 'C', 'C': 'G', '-': '-'}
     return ''.join(complement.get(base, base) for base in reversed(sequence.upper()))
 
   def pad_sequence(self, sequence, target_length, pad_char='-'):

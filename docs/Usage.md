@@ -2,12 +2,12 @@
 
 ## Overview
 
-Biosaic is a specialized tokenizer library designed for biological sequences, supporting both DNA and protein sequence tokenization. It provides k-mer based tokenization with support for continuous (sliding-window) and non-continuous (fixed-chunk) modes, along with special token handling for advanced biological sequence processing.
+Biosaic is a specialized tokenizer library designed for biological sequences, supporting DNA, RNA and protein sequence tokenization. It provides k-mer based tokenization with support for continuous (sliding-window) and non-continuous (fixed-chunk) modes, along with special token handling for advanced biological sequence processing.
 
 ## Features
 
-- **Dual Mode Support**: DNA and protein sequence tokenization
-- **Flexible K-mer Sizes**: Up to 8-mers for DNA, up to 4-mers for proteins
+- **Triple Mode Support**: DNA, RNA and protein sequence tokenization
+- **Flexible K-mer Sizes**: Up to 8-mers for DNA/RNA, up to 4-mers for proteins
 - **Tokenization Modes**: Continuous (overlapping) and non-continuous (fixed-chunk)
 - **Special Tokens**: Support for sequence markup and control tokens
 - **Remote Vocabularies**: Pre-trained vocabularies loaded from remote repositories
@@ -41,6 +41,26 @@ decoded = dna_tokenizer.decode(ids)
 print(decoded)  # "ATCGATCG"
 ```
 
+### Basic RNA Tokenization
+
+```python
+# Initialize RNA tokenizer with 3-mers
+dna_tokenizer = Tokenizer(mode="rna", kmer=3, continuous=True)
+
+# Tokenize a RNA sequence
+sequence = "AUCGAUCG"
+tokens = dna_tokenizer.tokenize(sequence)
+print(tokens)  # ['AUC', 'UCG', 'CGA', 'GAU', 'AUC', 'UCG']
+
+# Encode to IDs
+ids = dna_tokenizer.encode(sequence)
+print(ids)  # [45, 89, 67, 123, 45, 89]
+
+# Decode back to sequence
+decoded = dna_tokenizer.decode(ids)
+print(decoded)  # "AUCGAUCG"
+```
+
 ### Basic Protein Tokenization
 
 ```python
@@ -71,7 +91,7 @@ Tokenizer(mode: str, kmer: int, continuous: bool = False, special_tokens = None)
 **Parameters:**
 
 - `mode` (str): Sequence type - "dna" or "protein"
-- `kmer` (int): K-mer length (max 8 for DNA, max 4 for protein)
+- `kmer` (int): K-mer length (max 8 for DNA/RNA, max 4 for protein)
 - `continuous` (bool): Tokenization mode
   - `True`: Sliding-window (overlapping k-mers)
   - `False`: Fixed-chunk (non-overlapping k-mers)
@@ -506,6 +526,7 @@ This helps verify that vocabularies are being loaded correctly from remote sourc
 This documentation covers the Biosaic tokenizer library with support for:
 
 - DNA sequences (bases: A, T, G, C, -)
+- RNA sequences (bases: A, U, G, C, -)
 - Protein sequences (20 standard amino acids + gap character)
 - Remote vocabulary loading from GitHub repositories
 - K-mer sizes up to 8 for DNA and 4 for proteins
