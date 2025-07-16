@@ -22,34 +22,34 @@
 The Biosaic tokenizer follows a **facade pattern** with specialized backend implementations for different biological sequence types. The architecture consists of:
 
 ```sh
-┌─────────────────────────────────────────┐
-│              Tokenizer                  │
-│            (Facade Class)               │
-├─────────────────────────────────────────┤
-│      - Mode routing (DNA/Protein)       │
-│      - Configuration management         │
-│      - Remote vocabulary loading        │
-│      - Unified API exposure             │
-└─────────────────┬───────────────────────┘
-                  │
-        ┌─────────┴─────────┐
-        │                   │
-        ▼                   ▼
-┌─────────────┐    ┌─────────────┐
-│    DNA      │    │   Protein   │
-│  Backend    │    │   Backend   │
-└─────────────┘    └─────────────┘
-│                                │
-├─ Tokenization Logic            ├─ Tokenization Logic
-├─ Vocabulary Management         ├─ Vocabulary Management  
-├─ Encoding/Decoding             ├─ Encoding/Decoding
-├─ Validation                    ├─ Validation
-└─ Biological Utilities          └─ Biological Utilities
+      ┌─────────────────────────────────────────┐
+      │              Tokenizer                  │
+      │            (Facade Class)               │
+      ├─────────────────────────────────────────┤
+      │    - Mode routing (DNA?RNA/Protein)     │
+      │    - Configuration management           │
+      │    - Remote vocabulary loading          │
+      │    - Unified API exposure               │
+      └─────────────────────┬───────────────────┘
+                            │
+        ┌───────────────────┴────────────────┐
+        │                  │                 │
+        ▼                  ▼                 ▼
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│    DNA      │    │   Protein   │    │     RNA     │
+│  Backend    │    │   Backend   │    │   Backend   │
+└─────────────┘    └─────────────┘    └─────────────┘
+                          │                       
+                          ├─ Tokenization Logic   
+                          ├─ Vocabulary Management
+                          ├─ Encoding/Decoding    
+                          ├─ Validation           
+                          └─ Biological Utilities 
 ```
 
 ### Key Architectural Decisions
 
-1. **Separation of Concerns**: DNA and Protein logic are isolated in separate modules
+1. **Separation of Concerns**: DNA, RNA and Protein logic are isolated in separate modules
 2. **Facade Pattern**: Single entry point (`Tokenizer`) for all operations
 3. **Remote-First Vocabularies**: Pre-trained vocabularies loaded from remote sources
 4. **Immutable Configuration**: Tokenizer configuration is set at initialization
@@ -61,22 +61,25 @@ The Biosaic tokenizer follows a **facade pattern** with specialized backend impl
 biosaic/
 ├── _main.py          # Facade class and public API
 ├── _dna.py           # DNA-specific implementation
+├── _rna.py           # RNA-specific implementation
 ├── _protein.py       # Protein-specific implementation
 vocab/            # Remote vocabulary storage
 ├── dna/
 │   ├── base_3k.model
-│   ├── cont_3k.model
-│   └── special_3k.model
+│   └── cont_3k.model
+├── rna/
+│   ├── base_3k.model
+│   └── cont_3k.model
 └── protein/
     ├── base_2k.model
-    ├── cont_2k.model
-    └── special_2k.model
+    └── cont_2k.model
 ```
 
 ### File Responsibilities
 
 - **`_main.py`**: Public API, configuration management, backend routing
 - **`_dna.py`**: DNA sequence tokenization, reverse complement, validation
+- **`_rna.py`**: RNA sequence tokenization, reverse complement, validation
 - **`_protein.py`**: Protein sequence tokenization, amino acid handling
 - **Remote vocabularies**: Pre-computed k-mer vocabularies for different configurations
 
@@ -92,9 +95,11 @@ class Tokenizer:
         # Route to appropriate backend
         if mode == "dna":
             self._tokenizer = DNA(...)
+        elif mode == "rna":
+            self._tokenizer = RNA(...)
         else:
             self._tokenizer = Protein(...)
-    
+
     def encode(self, sequence: str) -> list[int]:
         return self._tokenizer.encode(sequence)  # Delegate to backend
 ```
@@ -113,7 +118,7 @@ def tokenize(self, sequence):
 
 ### 3. Template Method Pattern
 
-Both DNA and Protein classes follow the same structure with specialized implementations.
+All DNA, RNA and Protein classes follow the same structure with specialized implementations.
 
 ```python
 # Common interface across backends
@@ -181,7 +186,25 @@ def reverse_complement(self, sequence):
     return ''.join(complement.get(base, base) for base in reversed(sequence.upper()))
 ```
 
-### 3. Protein Backend
+### 3. RNA Backend
+
+**Purpose**: RNA-specific tokenization and biological operations
+
+**Key Features**:
+
+- Base characters: `['A', 'U', 'G', 'C', '-']`
+- Reverse complement calculation
+- RNA-specific validation
+
+**Critical Methods**:
+
+```python
+def reverse_complement(self, sequence):
+    complement = {'A': 'U', 'U': 'A', 'G': 'C', 'C': 'G', '-': '-'}
+    return ''.join(complement.get(base, base) for base in reversed(sequence.upper()))
+```
+
+### 4. Protein Backend
 
 **Purpose**: Protein-specific tokenization and amino acid handling
 
@@ -205,7 +228,7 @@ def reverse_complement(self, sequence):
 ```mermaid
 graph TD
     A[User creates Tokenizer] --> B[Validate parameters]
-    B --> C[Select backend DNA/Protein]
+    B --> C[Select backend DNA/RNA/Protein]
     C --> D[Initialize backend with config]
     D --> E[Construct vocabulary URL]
     E --> F[Load remote vocabulary]
@@ -425,8 +448,8 @@ def load_with_cache(self, model_path, cache_dir=None):
 
 ```python
 # 1. Parameter validation at initialization
-assert (mode == "dna" or mode == "protein"), "Unknown mode type"
-assert (kmer <= 8), "KMer size supported only till 8 for DNA"
+assert (mode == "dna" or mode == "rna" or mode == "protein"), "Unknown mode type"
+assert (kmer <= 8), "KMer size supported only till 8 for DNA/RNA"
 
 # 2. Input validation during tokenization
 if any(ch not in self._base_chars for ch in sequence):
@@ -675,6 +698,7 @@ raise ValueError("Invalid input")
 tests/
 ├── test_dna.py
 ├── test_protein.py
+├── test_rna.py
 └── test_tokenizer.py
 ```
 
