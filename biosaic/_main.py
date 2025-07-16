@@ -1,5 +1,6 @@
 from ._dna import DNA
 from ._protein import Protein
+from ._rna import RNA
 from typing import List
 
 main_base_url = "https://raw.githubusercontent.com/delveopers/biosaic/main/vocab/"
@@ -8,9 +9,9 @@ hugginface_url = "https://huggingface.co/shivendrra/BiosaicTokenizer/resolve/mai
 
 class Tokenizer:
   """
-    Biosaic Tokenizer class for DNA and Protein sequences with special token support.
+    Biosaic Tokenizer class for DNA/RNA and Protein sequences with special token support.
 
-    This class wraps around DNA and Protein tokenizers, allowing encoding,
+    This class wraps around DNA/RNA and Protein tokenizers, allowing encoding,
     decoding, tokenization, and detokenization of biological sequences 
     using pre-trained vocabularies stored remotely, with optional special tokens.
 
@@ -20,15 +21,15 @@ class Tokenizer:
       special_tokens (list or None): List of special tokens to include in vocabulary.
       encoding (str): The encoding identifier used to locate and load vocab files.
       encoding_path (str): URL path pointing to the pretrained vocabulary model file.
-      _tokenizer (DNA or Protein): Internal tokenizer instance specific to the sequence type.
+      _tokenizer (DNA/RNA or Protein): Internal tokenizer instance specific to the sequence type.
   """
   def __init__(self, mode: str, kmer: int, continuous: bool=False, special_tokens=None):
     """
       Initializes the Tokenizer with the specified mode, k-mer length, tokenization style, and special tokens.
 
       Args:
-        mode (str): Type of sequence to tokenize. Should be either "dna" or "protein".
-        kmer (int): The k-mer length used for tokenization. Maximum allowed is 8 for DNA and 4 for protein.
+        mode (str): Type of sequence to tokenize. Should be either "dna", "rna" or "protein".
+        kmer (int): The k-mer length used for tokenization. Maximum allowed is 8 for DNA/RNA and 4 for protein.
         continuous (bool): If True, enables sliding-window tokenization (i.e., overlapping k-mers).
                           If False, tokenizes in fixed non-overlapping k-mer chunks.
         special_tokens (list or None): List of special tokens to add to vocabulary. 
@@ -39,22 +40,17 @@ class Tokenizer:
         AssertionError: If an invalid mode is specified or k-mer size is above supported limit.
         ValueError: If special tokens are used with continuous=True.
     """
-    assert (mode == "dna" or mode == "protein"), "Unknown mode type, choose b/w ``dna`` & ``protein``"
-    if mode == "protein":
-      assert (kmer <= 4), "KMer size supported only till 4 for protein!"
-    else:
-      assert (kmer <= 8), "KMer size supported only till 8 for DNA!"
+    assert (mode == "dna" or mode == "rna" or mode == "protein"), "Unknown mode type, choose b/w ``dna``, ``rna`` or ``protein``"
+    if mode == "protein": assert (kmer <= 4), "KMer size supported only till 4 for protein!"
+    else: assert (kmer <= 8), "KMer size supported only till 8 for DNA or RNA!"
     self.kmer, self.continuous, self.special_tokens = kmer, continuous, special_tokens
-    
-    if mode == "dna":
-      self._tokenizer = DNA(kmer=kmer, continuous=continuous, special_tokens=special_tokens)
-    else:
-      self._tokenizer = Protein(kmer=kmer, continuous=continuous, special_tokens=special_tokens)
 
-    if continuous:
-      self.encoding = f"{mode}/cont_{kmer}k"
-    else:
-      self.encoding = f"{mode}/base_{kmer}k"
+    if mode == "dna": self._tokenizer = DNA(kmer=kmer, continuous=continuous, special_tokens=special_tokens)
+    elif mode == "rna": self._tokenizer = RNA(kmer=kmer, continuous=continuous, special_tokens=special_tokens)
+    else: self._tokenizer = Protein(kmer=kmer, continuous=continuous, special_tokens=special_tokens)
+
+    if continuous: self.encoding = f"{mode}/cont_{kmer}k"
+    else: self.encoding = f"{mode}/base_{kmer}k"
 
     self.encoding_path = main_base_url + self.encoding + ".model"
     self._tokenizer.load(model_path=self.encoding_path)
@@ -65,7 +61,7 @@ class Tokenizer:
       Encodes a biological sequence into integer token IDs.
 
       Args:
-        sequence (str): DNA or protein sequence composed of valid characters and/or special tokens.
+        sequence (str): DNA/RNA or protein sequence composed of valid characters and/or special tokens.
       Returns:
         List[int]: Encoded token IDs corresponding to k-mers and special tokens in the sequence.
       Raises:
@@ -89,7 +85,7 @@ class Tokenizer:
       Splits the input biological sequence into k-mer tokens and special tokens.
 
       Args:
-        sequence (str): DNA or protein string potentially containing special tokens.
+        sequence (str): DNA/RNA or protein string potentially containing special tokens.
       Returns:
         List[str]: List of k-mer substrings and special tokens, with variable lengths when special tokens present.
     """
